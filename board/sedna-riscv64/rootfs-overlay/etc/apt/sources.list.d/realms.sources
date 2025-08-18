@@ -1,0 +1,4 @@
+Types: deb
+URIs: http://apt.chain-host.online/
+Suites: ./
+Components:

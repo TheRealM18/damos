@@ -1,4 +1,4 @@
-package li.cil.sedna.buildroot;
+package com.therealm18.damos.buildroot;
 
 import java.io.InputStream;
 
