@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All rights reserved"
+showAsResourcePack=false
+
+[[mods]]
+modId="damos"
+version="1.0.0"
+displayName="DamOS"
+description="A mod that adds flash memory for OC2"
+authors="YourName"
+displayURL=""
+
+[[dependencies.damos]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.damos]]
+    modId="oc2r"
+    mandatory=true
+    versionRange="[2.2.1,)"
+    ordering="NONE"
+    side="BOTH"
