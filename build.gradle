@@ -62,42 +62,12 @@ repositories {
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
     }
-    maven { url = "https://proxy-maven.covers1624.net/" }
-    if (hasGithubPackageCredentials) {
-        final def GithubPackages = [
-            ["fnuecke/ceres", "li.cil.ceres"],
-            ["North-Western-Development/sedna", "li.cil.sedna"],
-            ["North-Western-Development/minux", "li.cil.sedna"]
-        ]
-        GithubPackages.each { final repo, final group ->
-            maven {
-                url = uri("https://maven.pkg.github.com/${repo}")
-                credentials {
-                    username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
-                    password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
-                }
-                content { includeGroup group }
-            }
-        }
-    }
-    flatDir {
-        dirs("libs")
-    }
-
 }
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
 
-    // Specify the libs embedded in the library mod explicitly for local development, where
-    // we can include these directly (and will have a local library mod using the local
-    // versions). Can't get these to get properly resolved in the IDE otherwise (doesn't
-    // pick them up via the library mod due to the embed configuration).
-    if (hasGithubPackageCredentials) {
-        compileOnly "li.cil.ceres:ceres:0.0.4"
-        compileOnly "li.cil.sedna:sedna:2.0.13"
-    }
     implementation fileTree(dir: 'libs', include: '*.jar')
 //    implementation "curse.maven:sedna-511276:3885542"
     minecraftLibrary "org.apache.commons:commons-collections4:${apache_commons_version}"
@@ -105,37 +75,7 @@ dependencies {
     implementation fg.deobf("curse.maven:architectury-api-${architectury_project_id}:${architectury_file_id}")
     implementation fg.deobf("curse.maven:markdownmanual-${markdownmanual_project_id}:${markdownmanual_file_id}")
     implementation fg.deobf("curse.maven:oc2r-1037738:6899236")
-
-    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
-    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-${minecraft_sdk}-api:${jei_version}")
-
-    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-${minecraft_sdk}:${jei_version}")
-
-    compileOnly fg.deobf("mrtjp:ProjectRed:${minecraft_version}-${pr_version}:api")
-    runtimeOnly fg.deobf("io.codechicken:CodeChickenLib:${minecraft_version}-${ccl_version}:universal")
-    runtimeOnly fg.deobf("io.codechicken:CBMultipart:${minecraft_version}-${cbm_version}:universal")
-    runtimeOnly fg.deobf("mrtjp:ProjectRed:${minecraft_version}-${pr_version}:core")
-    runtimeOnly fg.deobf("mrtjp:ProjectRed:${minecraft_version}-${pr_version}:transmission")
     
-    if (debug_embeddium.toBoolean())
-    {
-        runtimeOnly fg.deobf("curse.maven:embeddium-${embeddium_project_id}:${embeddium_file_id}")
-    }
-
-    if (debug_embeddium_plus_plus.toBoolean())
-    {
-        runtimeOnly fg.deobf("curse.maven:embeddiumplus-${embeddium_plus_plus_project_id}:${embeddium_plus_plus_file_id}")
-    }
-
-    if (debug_oculus.toBoolean())
-    {
-        runtimeOnly fg.deobf("curse.maven:oculus-${oculus_project_id}:${oculus_file_id}")
-    }
-
-    jarJar(group: 'libs', name: 'sedna', version: '[]') {
-        jarJar.pin(it, "")
-    }
-
     // Test Dependencies
     testImplementation "org.mockito:mockito-inline:${mockito_version}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${jupiter_version}"
@@ -146,7 +86,7 @@ System.setProperty("line.separator", "\n")
 
 tasks.register('packageScripts', Zip) {
     archiveFileName = "scripts.zip"
-    destinationDirectory = file("${layout.buildDirectory.get()}/resources/main/data/oc2r/file_systems")
+    destinationDirectory = file("${layout.buildDirectory.get()}/resources/main/data/damos/file_systems")
     from "src/main/scripts"
     filter { line -> line }
 }
@@ -165,8 +105,6 @@ tasks.named('jarJar'){
 
 minecraft {
     mappings channel: "official", version: minecraft_version
-
-    accessTransformer = file("src/main/resources/META-INF/accesstransformer.cfg")
 
     runs {
         configureEach {
@@ -201,13 +139,6 @@ minecraft {
             args "--mod", "damos", "--all", "--output", file("src/generated/resources/"), "--existing", file("src/main/resources")
         }
     }
-}
-
-mixin {
-    add sourceSets.main, "mixins.oc2r.refmap.json"
-    config "mixins.oc2r.json"
-
-//    quiet
 }
 
 tasks.register('copyGeneratedResources', Copy) {
@@ -265,7 +196,8 @@ curseforge {
         addGameVersion "Java 17"
         mainArtifact "build/libs/damos-${minecraft_version}-${minecraft_sdk}-${version}.jar"
         relations {
-            requiredDependency "markdownmanual"
+            requiredDependency "markdownmanual",
+            requiredDependency "oc2r"
         }
     }
 }
@@ -279,7 +211,8 @@ modrinth {
     loaders = [minecraft_sdk]
     changelog = System.getenv("CHANGELOG") ?: "Changelog not available."
     dependencies {
-        required.project "markdownmanual"
+        required.project "markdownmanual",
+        required.project "oc2r"
     }
 }
 
