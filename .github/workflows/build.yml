@@ -16,6 +16,13 @@ jobs:
     steps:
       - name: build
         run: |
+          git clone https://github.com/TheRealM18/damos.git -b '${{ github.ref_name }}'
+          wget https://github.com/North-Western-Development/minux/releases/download/0.0.47/cache.tar.zst
+          tar -C ~ -xf cache.tar.zst
+          mv ~/dl minux
+          rm cache.tar.zst
+          git clone https://github.com/North-Western-Development/sedna-mc.git
+          cd sedna-mc
           ./gradlew -Psemver=99.99.99 build
 
         env:
@@ -23,5 +30,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: damos.jar
-          path: damos-mc/build/libs/*.jar
+          name: sedna.jar
+          path: sedna-mc/build/libs/*.jar
