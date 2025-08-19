@@ -1,6 +1,66 @@
+import org.apache.commons.io.IOUtils
+
 plugins {
     id 'java'
     id 'maven-publish'
+    id "idea"
+    id "maven-publish"
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+    id "com.matthewprenger.cursegradle" version "1.4.0"
+    id 'org.spongepowered.mixin' version '0.7.+'
+    id "com.modrinth.minotaur" version "2.+"
+}
+
+apply plugin: 'org.spongepowered.mixin'
+apply plugin: "java"
+jarJar.enable()
+
+gradle.projectsEvaluated {
+    project.configurations.named("jarJar") {
+        def nativeLibsDir = file("src/main/resources/natives")
+        // native networking library
+        def nativeNetworkingBaseUrl = "https://github.com/${native_networking_repo}/releases/download/${network_lib_version}/"
+
+        def targets = [
+            "macos/liboc2rnet-x86_64.dylib",
+            "macos/liboc2rnet-arm64.dylib",
+            "windows/oc2rnet-x86_64.dll",
+            "windows/oc2rnet-arm64.dll",
+            "linux/liboc2rnet-linux-x86_64.so",
+            "linux/liboc2rnet-linux-arm64.so"
+        ]
+
+        targets.each { path ->
+            def file = new File(nativeLibsDir, path)
+            file.parentFile.mkdirs()
+            def fileName = path.tokenize('/')[-1]
+            def url = new URL("${nativeNetworkingBaseUrl}${fileName}")
+            println "Downloading ${url} → ${file}"
+            file.withOutputStream { out ->
+                url.openStream().withCloseable { IOUtils.copy(it, out) }
+            }
+        }
+
+        // senda
+        def sednaUrl = "https://github.com/${senda_repo}/releases/download/${minecraft_version}-${minecraft_sdk}/${sedna_version}/sedna-${minecraft_version}-${minecraft_sdk}-${sedna_version}+${sedna_version_commit_ref}.jar"
+        def sednaFile = new File('libs', 'sedna.jar')
+        sednaFile.parentFile.mkdirs()
+        def url = new URL("${sednaUrl}")
+        println "Downloading ${url} → ${sednaFile}"
+        sednaFile.withOutputStream { out ->
+            url.openStream().withCloseable { IOUtils.copy(it, out) }
+        }
+    }
+}
+
+allprojects {
+    gradle.projectsEvaluated {
+        tasks.withType(JavaCompile).tap {
+            configureEach {
+                options.compilerArgs << "-Xmaxerrs" << "1000" << "-h" << ("${layout.buildDirectory.get().toString().replace("\\", "/")}/c" as String)
+            }
+        }
+    }
 }
 
 def getGitRef() {
@@ -25,6 +85,258 @@ repositories {
     mavenCentral()
 }
 
+
+final def hasGithubPackageCredentials =
+    (project.hasProperty("gpr.user") && project.hasProperty("gpr.key")) ||
+        (System.getenv("GITHUB_ACTOR") && System.getenv("GITHUB_TOKEN"))
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://cursemaven.com"
+    }
+    maven {
+        // location of the maven that hosts JEI files since January 2023
+        name = "Jared's maven"
+        url = "https://maven.blamejared.com/"
+    }
+    maven { url = "https://proxy-maven.covers1624.net/" }
+    if (hasGithubPackageCredentials) {
+        final def GithubPackages = [
+            ["fnuecke/ceres", "li.cil.ceres"],
+            ["North-Western-Development/sedna", "li.cil.sedna"],
+            ["North-Western-Development/minux", "li.cil.sedna"]
+        ]
+        GithubPackages.each { final repo, final group ->
+            maven {
+                url = uri("https://maven.pkg.github.com/${repo}")
+                credentials {
+                    username = project.findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+                    password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+                }
+                content { includeGroup group }
+            }
+        }
+    }
+    flatDir {
+        dirs("libs")
+    }
+
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
+
+    // Specify the libs embedded in the library mod explicitly for local development, where
+    // we can include these directly (and will have a local library mod using the local
+    // versions). Can't get these to get properly resolved in the IDE otherwise (doesn't
+    // pick them up via the library mod due to the embed configuration).
+    if (hasGithubPackageCredentials) {
+        compileOnly "li.cil.ceres:ceres:0.0.4"
+        compileOnly "li.cil.sedna:sedna:2.0.13"
+        compileOnly "li.cil.sedna:sedna-buildroot:0.0.40"
+    }
+    implementation fileTree(dir: 'libs', include: '*.jar')
+//    implementation "curse.maven:sedna-511276:3885542"
+    minecraftLibrary "org.apache.commons:commons-collections4:${apache_commons_version}"
+
+    implementation fg.deobf("curse.maven:architectury-api-${architectury_project_id}:${architectury_file_id}")
+    implementation fg.deobf("curse.maven:markdownmanual-${markdownmanual_project_id}:${markdownmanual_file_id}")
+    implementation fg.deobf("curse.maven:oc2r-1037738:6899236")
+
+    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
+    compileOnly fg.deobf("mezz.jei:jei-${minecraft_version}-${minecraft_sdk}-api:${jei_version}")
+
+    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-${minecraft_sdk}:${jei_version}")
+
+    compileOnly fg.deobf("mrtjp:ProjectRed:${minecraft_version}-${pr_version}:api")
+    runtimeOnly fg.deobf("io.codechicken:CodeChickenLib:${minecraft_version}-${ccl_version}:universal")
+    runtimeOnly fg.deobf("io.codechicken:CBMultipart:${minecraft_version}-${cbm_version}:universal")
+    runtimeOnly fg.deobf("mrtjp:ProjectRed:${minecraft_version}-${pr_version}:core")
+    runtimeOnly fg.deobf("mrtjp:ProjectRed:${minecraft_version}-${pr_version}:transmission")
+    
+    if (debug_embeddium.toBoolean())
+    {
+        runtimeOnly fg.deobf("curse.maven:embeddium-${embeddium_project_id}:${embeddium_file_id}")
+    }
+
+    if (debug_embeddium_plus_plus.toBoolean())
+    {
+        runtimeOnly fg.deobf("curse.maven:embeddiumplus-${embeddium_plus_plus_project_id}:${embeddium_plus_plus_file_id}")
+    }
+
+    if (debug_oculus.toBoolean())
+    {
+        runtimeOnly fg.deobf("curse.maven:oculus-${oculus_project_id}:${oculus_file_id}")
+    }
+
+    jarJar(group: 'libs', name: 'sedna', version: '[]') {
+        jarJar.pin(it, "")
+    }
+
+    // Test Dependencies
+    testImplementation "org.mockito:mockito-inline:${mockito_version}"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${jupiter_version}"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${jupiter_version}"
+}
+
+System.setProperty("line.separator", "\n")
+
+tasks.register('packageScripts', Zip) {
+    archiveFileName = "scripts.zip"
+    destinationDirectory = file("${layout.buildDirectory.get()}/resources/main/data/oc2r/file_systems")
+    from "src/main/scripts"
+    filter { line -> line }
+}
+
+tasks.register('copyLicensesToResources', Copy) {
+    from "."
+    into file("${layout.buildDirectory.get()}/resources/main")
+    include "LICENSE*"
+}
+
+processResources.dependsOn(packageScripts)
+processResources.dependsOn(copyLicensesToResources)
+
+tasks.named('jarJar'){
+}
+
+minecraft {
+    mappings channel: "official", version: minecraft_version
+
+    accessTransformer = file("src/main/resources/META-INF/accesstransformer.cfg")
+
+    runs {
+        configureEach {
+            property "forge.logging.markers", "REGISTRIES"
+            property "forge.logging.console.level", "debug"
+
+            mods {
+                oc2 {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        client {
+            workingDirectory project.file("runclient")
+            property "forge.enabledGameTestNamespaces", "damos"
+        }
+
+        server {
+            workingDirectory project.file("run")
+            property "forge.enabledGameTestNamespaces", "damos"
+            arg "--nogui"
+        }
+
+        gameTestServer {
+            workingDirectory project.file('run')
+            property "forge.enabledGameTestNamespaces", "damos"
+        }
+
+        data {
+            workingDirectory project.file("run")
+            args "--mod", "damos", "--all", "--output", file("src/generated/resources/"), "--existing", file("src/main/resources")
+        }
+    }
+}
+
+mixin {
+    add sourceSets.main, "mixins.oc2r.refmap.json"
+    config "mixins.oc2r.json"
+
+//    quiet
+}
+
+tasks.register('copyGeneratedResources', Copy) {
+    from "src/generated"
+    into "src/main"
+    exclude "resources/.cache"
+}
+
+jar {
+    finalizedBy "reobfJar"
+
+    manifest {
+        attributes([
+            "FMLAT"                   : "accesstransformer.cfg",
+            "Specification-Title"     : "damos",
+            "Specification-Vendor"    : "TheRealM18",
+            "Specification-Version"   : "1",
+            "Implementation-Title"    : project.name,
+            "Implementation-Version"  : "${semver}",
+            "Implementation-Vendor"   : "TheRealM18",
+            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+        ])
+    }
+}
+
+publish {
+    dependsOn(tasks.modrinth)
+    dependsOn(tasks.curseforge)
+}
+
+artifacts {
+    archives apiJar
+}
+
+static def getCurseforgeSDKValue(minecraft_sdk) {
+    switch(minecraft_sdk) {
+        case "forge": return "Forge"
+        case "fabric": return "Fabric"
+        case "neoforge": return "NeoForge"
+        case "quilt": return "Quilt"
+        default: throw new Exception("Unrecognized minecraft SDK")
+    }
+}
+
+curseforge {
+    apiKey = System.getenv("CURSEFORGE_API_KEY") ?: ""
+
+    project {
+        id = curse_project_id
+        releaseType = System.getenv('RELEASE_TYPE') ?: "alpha"
+        changelogType = 'markdown'
+        changelog = System.getenv("CHANGELOG") ?: "Changelog not available."
+        addGameVersion getCurseforgeSDKValue(minecraft_sdk)
+        addGameVersion minecraft_version
+        addGameVersion "Java 17"
+        mainArtifact "build/libs/damos-${minecraft_version}-${minecraft_sdk}-${version}.jar"
+        relations {
+            requiredDependency "markdownmanual"
+        }
+    }
+}
+
+modrinth {
+    token = System.getenv("MODRINTH_TOKEN")
+    projectId = modrinth_project_id
+    versionType = System.getenv('RELEASE_TYPE') ?: "alpha"
+    uploadFile = "build/libs/damos-${minecraft_version}-${minecraft_sdk}-${version}.jar"
+    gameVersions = [minecraft_version]
+    loaders = [minecraft_sdk]
+    changelog = System.getenv("CHANGELOG") ?: "Changelog not available."
+    dependencies {
+        required.project "markdownmanual"
+    }
+}
+
+idea {
+    module {
+        for (final String exclude in ["assets", "run", "out", "logs", "src/generated"]) {
+            excludeDirs += file(exclude)
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+compileJava {
+    options.encoding = "UTF-8"
+}
 
 import org.apache.tools.ant.taskdefs.condition.Os
 
