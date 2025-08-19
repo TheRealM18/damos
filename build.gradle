@@ -39,7 +39,7 @@ def getGitRef() {
 }
 
 version = "${semver}+${getGitRef()}"
-group = 'com.therealm18.damos'
+group = 'com.therealm18.minux'
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
@@ -86,7 +86,7 @@ System.setProperty("line.separator", "\n")
 
 tasks.register('packageScripts', Zip) {
     archiveFileName = "scripts.zip"
-    destinationDirectory = file("${layout.buildDirectory.get()}/resources/main/data/damos/file_systems")
+    destinationDirectory = file("${layout.buildDirectory.get()}/resources/main/data/minux/file_systems")
     from "src/main/scripts"
     filter { line -> line }
 }
@@ -120,23 +120,23 @@ minecraft {
 
         client {
             workingDirectory project.file("runclient")
-            property "forge.enabledGameTestNamespaces", "damos"
+            property "forge.enabledGameTestNamespaces", "minux"
         }
 
         server {
             workingDirectory project.file("run")
-            property "forge.enabledGameTestNamespaces", "damos"
+            property "forge.enabledGameTestNamespaces", "minux"
             arg "--nogui"
         }
 
         gameTestServer {
             workingDirectory project.file('run')
-            property "forge.enabledGameTestNamespaces", "damos"
+            property "forge.enabledGameTestNamespaces", "minux"
         }
 
         data {
             workingDirectory project.file("run")
-            args "--mod", "damos", "--all", "--output", file("src/generated/resources/"), "--existing", file("src/main/resources")
+            args "--mod", "minux", "--all", "--output", file("src/generated/resources/"), "--existing", file("src/main/resources")
         }
     }
 }
@@ -153,7 +153,7 @@ jar {
     manifest {
         attributes([
             "FMLAT"                   : "accesstransformer.cfg",
-            "Specification-Title"     : "damos",
+            "Specification-Title"     : "minux",
             "Specification-Vendor"    : "TheRealM18",
             "Specification-Version"   : "1",
             "Implementation-Title"    : project.name,
@@ -194,7 +194,7 @@ curseforge {
         addGameVersion getCurseforgeSDKValue(minecraft_sdk)
         addGameVersion minecraft_version
         addGameVersion "Java 17"
-        mainArtifact "build/libs/damos-${minecraft_version}-${minecraft_sdk}-${version}.jar"
+        mainArtifact "build/libs/minux-${minecraft_version}-${minecraft_sdk}-${version}.jar"
         relations {
             requiredDependency "markdownmanual",
             requiredDependency "oc2r"
@@ -206,7 +206,7 @@ modrinth {
     token = System.getenv("MODRINTH_TOKEN")
     projectId = modrinth_project_id
     versionType = System.getenv('RELEASE_TYPE') ?: "alpha"
-    uploadFile = "build/libs/damos-${minecraft_version}-${minecraft_sdk}-${version}.jar"
+    uploadFile = "build/libs/minux-${minecraft_version}-${minecraft_sdk}-${version}.jar"
     gameVersions = [minecraft_version]
     loaders = [minecraft_sdk]
     changelog = System.getenv("CHANGELOG") ?: "Changelog not available."
@@ -244,13 +244,13 @@ clean.dependsOn cleanBuildroot
 task compileBuildroot(type: Exec) {
     if (Os.isFamily(Os.FAMILY_UNIX)) {
         commandLine("make")
-        commandLine("sed -i 's|minux|damos|g' sedna-mc/build.gradle")
-        commandLine("damos-bootfs/build.sh")
+        commandLine("sed -i 's|minux|minux|g' sedna-mc/build.gradle")
+        commandLine("minux-bootfs/build.sh")
     } else {
-        logger.log(LogLevel.WARN, "Can only make buildroot on Linux. Expecting output files to have been manually placed in [output/images/] and [damos-bootfs/].")
+        logger.log(LogLevel.WARN, "Can only make buildroot on Linux. Expecting output files to have been manually placed in [output/images/] and [minux-bootfs/].")
         enabled = false
     }
-    outputs.files "output/images/fw_jump.bin", "output/images/Image", "output/images/rootfs.cramfs", "damos-bootfs/bootfs.squashfs"
+    outputs.files "output/images/fw_jump.bin", "output/images/Image", "output/images/rootfs.cramfs", "minux-bootfs/bootfs.squashfs"
     outputs.upToDateWhen { false }
 }
 
