@@ -22,6 +22,7 @@ jobs:
           mv ~/dl minux
           rm cache.tar.zst
           git clone https://github.com/North-Western-Development/sedna-mc.git
+          sed -i 's|minux|damos|g' sedna-mc/build.gradle
           cd sedna-mc
           ./gradlew -Psemver=99.99.99 build
 
