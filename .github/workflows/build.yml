@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: build
         run: |
-          git clone https://github.com/therealm18/damos.git -b '${{ github.ref_name }}'
+          git clone https://github.com/TheRealM18/damos.git -b '${{ github.ref_name }}'
           ./gradlew -Psemver=99.99.99 build
 
         env:
