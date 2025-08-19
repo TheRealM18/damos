@@ -19,7 +19,7 @@ jobs:
           git clone https://github.com/TheRealM18/damos.git -b '${{ github.ref_name }}'
           wget https://github.com/North-Western-Development/minux/releases/download/0.0.47/cache.tar.zst
           tar -C ~ -xf cache.tar.zst
-          mv ~/dl minux
+          mv ~/dl damos
           rm cache.tar.zst
           git clone https://github.com/North-Western-Development/sedna-mc.git
           sed -i 's|minux|damos|g' sedna-mc/build.gradle
